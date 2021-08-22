@@ -99,10 +99,6 @@ func main() {
 
 		res, err := ln.Call(command, params)
 		if err != nil {
-			if err.Error() == "eclair said: Substream Source(EntitySource) cannot be materialized more than once" {
-				continue
-			}
-
 			rl.Write([]byte(err.Error() + "\n"))
 		} else {
 			result := []byte(res.String())
