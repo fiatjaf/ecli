@@ -8,7 +8,6 @@ import (
 )
 
 func parseCommand(line string) (string, eclair.Params) {
-	line = strings.TrimSpace(line)
 	argv, err := shellquote.Split(line)
 	if err != nil || len(argv) == 0 {
 		return "", nil
