@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -12,6 +13,9 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/pflag"
 )
+
+var ln eclair.Client
+var rl *readline.Instance
 
 func main() {
 	var dir string
@@ -27,11 +31,12 @@ func main() {
 
 	readline.SetHistoryPath(filepath.Join(dir, "ecli.history"))
 
-	ln := eclair.Client{Host: "http://" + host + ":" + port, Password: password}
+	ln = eclair.Client{Host: "http://" + host + ":" + port, Password: password}
 
-	rl, err := readline.New(alias + "> ")
-	if err != nil {
+	if rl_, err := readline.New(alias + "> "); err != nil {
 		panic(err)
+	} else {
+		rl = rl_
 	}
 	defer rl.Close()
 
@@ -45,7 +50,7 @@ func main() {
 					continue
 				}
 
-				rl.Write([]byte("[" + typ + "] " + message.String() + "\n"))
+				printf("[%s] %s", typ, message.String())
 			}
 		}()
 	}
@@ -68,7 +73,7 @@ func main() {
 
 			query, err := gojq.Parse(line)
 			if err != nil {
-				rl.Write([]byte(err.Error() + "\n"))
+				printf("<> %s", err.Error())
 				continue
 			}
 
@@ -80,33 +85,45 @@ func main() {
 				}
 
 				if err, ok := v.(error); ok {
-					rl.Write([]byte(err.Error() + "\n"))
+					printf("<> %s", err.Error())
 					continue
 				}
 
 				b, _ := json.MarshalIndent(v, "", "  ")
-				rl.Write([]byte(string(b) + "\n"))
+				printf(string(b))
 			}
 
 			continue
 		}
 
-		// eclair command
+		// command
 		command, params := parseCommand(line)
 		if command == "" || params == nil {
 			continue
 		}
 
+		/// extra command
+		switch command {
+		case "openfullbalance":
+			openFullBalance(params)
+		}
+
+		/// eclair command
 		res, err := ln.Call(command, params)
 		if err != nil {
-			rl.Write([]byte(err.Error() + "\n"))
+			printf("<> %s", err.Error())
 		} else {
 			result := []byte(res.String())
 			var val interface{}
 			json.Unmarshal(result, &val)
 			results = append(results[1:], val)
 			b, _ := json.MarshalIndent(val, "", "  ")
-			rl.Write([]byte(string(b) + "\n"))
+			printf(string(b))
+			continue
 		}
 	}
+}
+
+func printf(base string, args ...interface{}) {
+	rl.Write([]byte(fmt.Sprintf(base, args...) + "\n"))
 }
