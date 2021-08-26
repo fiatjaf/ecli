@@ -1,17 +1,19 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/fiatjaf/eclair-go"
+	"github.com/tidwall/gjson"
 )
 
-func openFullBalance(params eclair.Params) {
+func openFullBalance(params eclair.Params) (gjson.Result, error) {
 	inode, ok := params["nodeId"]
 	if !ok {
-		printf("missing --nodeId")
-		return
+		return gjson.Result{}, errors.New("missing --nodeId")
 	}
 	node := inode.(string)
 
@@ -19,8 +21,7 @@ func openFullBalance(params eclair.Params) {
 	fundingFeerateSatByte, _ := ifundingFeerateSatByte.(string)
 	satPerByte, err := strconv.ParseInt(fundingFeerateSatByte, 10, 64)
 	if err != nil {
-		printf("missing --fundingFeerateSatByte")
-		return
+		return gjson.Result{}, errors.New("missing --fundingFeerateSatByte")
 	}
 
 	ln.Call("connect", eclair.Params{"nodeId": node})
@@ -41,16 +42,16 @@ func openFullBalance(params eclair.Params) {
 		printf("  : trying %d sats (fee %d sat/b)", sat, fee)
 
 		params["fundingSatoshis"] = sat
-		if _, err := ln.Call("open", params); err != nil {
+		if res, err := ln.Call("open", params); err != nil {
 			if strings.Contains(err.Error(), "Insufficient funds (code: -4)") {
 				continue
 			}
-
-			printf("  : unexpected error: %s", err.Error())
-			return
+			return gjson.Result{}, fmt.Errorf("unexpected error: %w", err)
+		} else {
+			return res, nil
 		}
-		printf("  : success.")
 	}
 
 	printf(": stopped trying after many attempts.")
+	return gjson.Result{}, errors.New("stopped after many attempts")
 }

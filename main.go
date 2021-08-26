@@ -12,6 +12,7 @@ import (
 	"github.com/itchyny/gojq"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/pflag"
+	"github.com/tidwall/gjson"
 )
 
 var ln eclair.Client
@@ -65,6 +66,7 @@ func main() {
 		line = strings.TrimSpace(line)
 
 		// jq filter
+	jqfilter:
 		if strings.HasPrefix(line, ".") {
 			line = "$last | " + line
 		}
@@ -96,30 +98,48 @@ func main() {
 			continue
 		}
 
+		// command + jq filter
+		var jqFilterAtTheEnd string
+		if spl := strings.SplitN(line, "|", 2); len(spl) == 2 {
+			jqFilterAtTheEnd = strings.TrimSpace(spl[1])
+			line = strings.TrimSpace(spl[0])
+		}
+
 		// command
 		command, params := parseCommand(line)
 		if command == "" || params == nil {
 			continue
 		}
+		var (
+			res    gjson.Result
+			cmdErr error
+		)
 
 		/// extra command
 		switch command {
 		case "openfullbalance":
-			openFullBalance(params)
+			res, cmdErr = openFullBalance(params)
+		default:
+			/// eclair command
+			res, cmdErr = ln.Call(command, params)
 		}
 
-		/// eclair command
-		res, err := ln.Call(command, params)
-		if err != nil {
-			printf("<> %s", err.Error())
+		if cmdErr != nil {
+			printf("<> %s", cmdErr.Error())
 		} else {
 			result := []byte(res.String())
 			var val interface{}
 			json.Unmarshal(result, &val)
 			results = append(results[1:], val)
-			b, _ := json.MarshalIndent(val, "", "  ")
-			printf(string(b))
-			continue
+
+			if jqFilterAtTheEnd != "" {
+				line = jqFilterAtTheEnd
+				goto jqfilter
+			} else {
+				b, _ := json.MarshalIndent(val, "", "  ")
+				printf(string(b))
+				continue
+			}
 		}
 	}
 }

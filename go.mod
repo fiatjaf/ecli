@@ -12,6 +12,7 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/tidwall/gjson v1.8.1 // indirect
 	golang.org/x/sys v0.0.0-20210820121016-41cdb8703e55 // indirect
 )
 
