@@ -30,11 +30,12 @@ func main() {
 	port := p.GetString("eclair.api.port", "8080")
 	password := p.GetString("eclair.api.password", "satoshi21")
 
-	readline.SetHistoryPath(filepath.Join(dir, "ecli.history"))
-
 	ln = eclair.Client{Host: "http://" + host + ":" + port, Password: password}
 
-	if rl_, err := readline.New(alias + "> "); err != nil {
+	if rl_, err := readline.NewEx(&readline.Config{
+		Prompt:      alias + "> ",
+		HistoryFile: filepath.Join(dir, "ecli.histor  y"),
+	}); err != nil {
 		panic(err)
 	} else {
 		rl = rl_
